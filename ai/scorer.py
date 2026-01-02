@@ -79,11 +79,6 @@ class AIScorer:
         prompt_file = output_dir / f"{sector_name}_{date_str}_prompt.md"
 
         with open(prompt_file, 'w', encoding='utf-8') as f:
-            f.write(f"# {sector_name}板块 - AI分析Prompt\n\n")
-            f.write(f"**生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-            f.write(f"**AI提供商**: {self.provider}\n")
-            f.write(f"**AI模型**: {self.model}\n\n")
-            f.write("---\n\n")
             f.write(prompt)
 
         logger.info(f"AI Prompt已保存到: {prompt_file}")

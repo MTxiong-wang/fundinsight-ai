@@ -136,7 +136,7 @@ def export_tool_scores_to_markdown(sector_name: str, scored_funds: list) -> str:
 
             f.write(f"| {i} | {fund.code} | {fund.name} | {fund_type} | {score:.1f} | {fee_col} | {scale_col} | {ytd_col} | {long_term_col} | {benchmark_col} | {stability_col} | {benchmark_name} |\n")
 
-    console.print(f"[green]✅ 工具评分已保存到: {output_file}[/green]")
+    console.print(f"[green][完成] 工具评分已保存到: {output_file}[/green]")
     return str(output_file)
 
 
@@ -154,7 +154,7 @@ def append_ai_results_to_markdown(output_file: str, ai_result: str):
         f.write(ai_result)
         f.write("\n")
 
-    console.print(f"[green]✅ AI评分结果已追加到: {output_file}[/green]")
+    console.print(f"[green][完成] AI评分结果已追加到: {output_file}[/green]")
 
 
 def export_to_markdown(sector_name: str, scored_funds: list, ai_result: str = None):
@@ -187,14 +187,15 @@ def print_banner():
     console.print(banner, style="bold cyan")
 
 
-async def analyze_sector(sector_name: str):
+async def analyze_sector(sector_name: str, tool_only: bool = False):
     """
     分析板块基金的主流程
 
     Args:
         sector_name: 板块名称，如"新能源"、"半导体"
+        tool_only: 是否只输出工具评分，不运行AI评分
     """
-    console.print(Panel.fit(f"🎯 分析板块: {sector_name}", style="bold green"))
+    console.print(Panel.fit(f"[分析板块]: {sector_name}", style="bold green"))
     console.print()
 
     # 步骤1: 搜索板块基金
@@ -202,10 +203,10 @@ async def analyze_sector(sector_name: str):
         fund_codes = await search_sector_funds(sector_name)
 
         if not fund_codes:
-            console.print("[red]❌ 未找到相关基金[/red]")
+            console.print("[red][错误] 未找到相关基金[/red]")
             return
 
-        console.print(f"✅ 找到 [cyan]{len(fund_codes)}[/cyan] 只基金")
+        console.print(f"[成功] 找到 [cyan]{len(fund_codes)}[/cyan] 只基金")
 
     # 步骤2: 抓取基金数据
     console.print()
@@ -221,16 +222,16 @@ async def analyze_sector(sector_name: str):
             funds = await client.batch_get_fund_data(fund_codes)
 
         if not funds:
-            console.print("[red]❌ 未能获取任何基金数据[/red]")
+            console.print("[red][错误] 未能获取任何基金数据[/red]")
             return
 
-        console.print(f"✅ 成功获取 [cyan]{len(funds)}[/cyan] 只基金的数据")
+        console.print(f"[成功] 成功获取 [cyan]{len(funds)}[/cyan] 只基金的数据")
 
     # 显示基金列表预览
     console.print()
     console.print("[dim]基金列表预览:[/dim]")
     for fund in funds[:3]:  # 显示前3个
-        console.print(f"  • {fund.code} {fund.name} - 规模{fund.scale}亿")
+        console.print(f"  - {fund.code} {fund.name} - 规模{fund.scale}亿")
     if len(funds) > 3:
         console.print(f"  ... 还有 {len(funds) - 3} 只基金")
 
@@ -252,20 +253,35 @@ async def analyze_sector(sector_name: str):
 
     logger.info(f"工具评分完成，共 {len(scored_funds)} 只基金")
 
-    # 步骤4: 立即输出工具评分到Markdown
-    console.print()
-    output_file = export_tool_scores_to_markdown(sector_name, scored_funds)
+    # 根据参数决定输出内容
+    output_file = None
 
-    # 步骤5: AI 评分排名并追加到Markdown
-    console.print()
-    scorer = AIScorer()
-    ai_result = None
-    with console.status("[bold green]AI 正在分析评分...", spinner="dots2"):
-        ai_result = await scorer.rank_funds_with_ai(sector_name, funds)
+    if tool_only:
+        # 只输出工具评分
+        console.print()
+        output_file = export_tool_scores_to_markdown(sector_name, scored_funds)
+    else:
+        # 默认：只输出AI评分
+        console.print()
+        scorer = AIScorer()
+        ai_result = None
+        with console.status("[bold green]AI 正在分析评分...", spinner="dots2"):
+            ai_result = await scorer.rank_funds_with_ai(sector_name, funds)
 
-    # 如果AI评分成功，追加到文件
-    if ai_result:
-        append_ai_results_to_markdown(output_file, ai_result)
+        # 如果AI评分成功，输出到文件
+        if ai_result:
+            date_str = datetime.now().strftime("%Y%m%d")
+            output_dir = Path("outputs")
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_file = output_dir / f"{sector_name}_{date_str}.md"
+
+            with open(output_file, 'w', encoding='utf-8') as f:
+                f.write(f"# {sector_name}板块 - AI评分结果\n\n")
+                f.write(f"**生成时间**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+                f.write("---\n\n")
+                f.write(ai_result)
+
+            console.print(f"[green][完成] AI评分已保存到: {output_file}[/green]")
 
 
 def main():
@@ -275,15 +291,21 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:
-  python main.py 新能源
-  python main.py 半导体
-  python main ai 医疗
+  python main.py 新能源          # 只输出AI评分（默认）
+  python main.py --tool-only 芯片 # 只输出工具评分
+  python main.py -t 半导体        # 只输出工具评分（简写）
         """
     )
 
     parser.add_argument(
         "sector",
         help="板块名称（如：新能源、半导体、医疗等）"
+    )
+
+    parser.add_argument(
+        "-t", "--tool-only",
+        action="store_true",
+        help="只输出工具评分，不运行AI评分"
     )
 
     parser.add_argument(
@@ -302,7 +324,7 @@ def main():
         print_banner()
 
         # 执行分析
-        asyncio.run(analyze_sector(args.sector))
+        asyncio.run(analyze_sector(args.sector, args.tool_only))
 
     except ValueError as e:
         console.print(f"[red]配置错误: {e}[/red]")
