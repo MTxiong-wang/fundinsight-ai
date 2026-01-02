@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+
+# Project specific
+downloads/
+data/
+logs/
+outputs/
+*.log
+*.xlsx
+*.csv
+
+# Cache
+data/cache.json
+
+# Playwright
+.playwright/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test outputs
+test_*.json
+test_*.xlsx
